@@ -1,5 +1,5 @@
-var solution = new Solution('gittest');
-var project = new Project('gittest');
+var solution = new Solution('kitgit');
+var project = new Project('kitgit');
 
 solution.setCmd();
 
