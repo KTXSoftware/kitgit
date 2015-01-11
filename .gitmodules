@@ -1,0 +1,4 @@
+[submodule "libgit2"]
+	path = libgit2
+	url = ../libgit2
+	branch = master
