@@ -70,28 +70,27 @@ void check_lg2(int error, const char *message, const char *extra) {
 }
 
 int pull() {
-	git_repository *repo;
-	git_reference *current_branch, *upstream;
+	git_repository* repo;
+	git_reference* current_branch;
+	git_reference* upstream;
 	git_buf remote_name = { 0 };
-	git_remote *remote;
-	
-	git_threads_init();
+	git_remote* remote;
 	
 	check_lg2(git_repository_open_ext(&repo, "kraffiti", 0, NULL), "failed to open repo", NULL);
 	check_lg2(git_repository_head(&current_branch, repo), "failed to lookup current branch", NULL);
 	check_lg2(git_branch_upstream(&upstream, current_branch), "failed to get upstream branch", NULL);
 	check_lg2(git_branch_remote_name(&remote_name, repo, git_reference_name(upstream)), "failed to get the reference's upstream", NULL);
-	check_lg2(git_remote_load(&remote, repo, remote_name.ptr), "failed to load remote", NULL);
+	check_lg2(git_remote_lookup(&remote, repo, remote_name.ptr), "failed to load remote", NULL);
 	git_buf_free(&remote_name);
-	check_lg2(git_remote_fetch(remote, NULL, NULL), "failed to fetch from upstream", NULL);
+	check_lg2(git_remote_fetch(remote, NULL, NULL, NULL), "failed to fetch from upstream", NULL);
 	
 	{
-		git_merge_head *merge_heads[1];
-		check_lg2(git_merge_head_from_ref(&merge_heads[0], repo, upstream), "failed to create merge head", NULL);
+		git_annotated_commit *merge_heads[1];
+		check_lg2(git_annotated_commit_from_ref(&merge_heads[0], repo, upstream), "failed to create merge head", NULL);
 
 		git_merge_analysis_t analysis;
 		git_merge_preference_t preference;
-		git_merge_analysis(&analysis, &preference, repo, (const git_merge_head **)merge_heads, 1);
+		git_merge_analysis(&analysis, &preference, repo, (const git_annotated_commit**)merge_heads, 1);
 
 		if (analysis & GIT_MERGE_ANALYSIS_UP_TO_DATE) {
 			printf("Up to date\n");
@@ -101,7 +100,7 @@ int pull() {
 		}
 		else if (analysis & GIT_MERGE_ANALYSIS_FASTFORWARD) {
 			printf("Fast forward\n");
-			const git_oid* id = git_merge_head_id(merge_heads[0]);
+			const git_oid* id = git_annotated_commit_id(merge_heads[0]);
 
 			git_object* obj;
 			check_lg2(git_object_lookup(&obj, repo, id, GIT_OBJ_ANY), "Failed getting new head id.", NULL);
@@ -114,7 +113,7 @@ int pull() {
 			check_lg2(git_reference_set_target(&newhead, current_branch, id, NULL, "Fast forwarding"), "Fast forward fail.", NULL);
 		}
 		else if (analysis & GIT_MERGE_ANALYSIS_NORMAL) {
-			check_lg2(git_merge(repo, (const git_merge_head **)merge_heads, 1, NULL, NULL), "failed to merge", NULL);
+			check_lg2(git_merge(repo, (const git_annotated_commit**)merge_heads, 1, NULL, NULL), "failed to merge", NULL);
 			{
 				git_index *index;
 				int has_conflicts;
@@ -134,7 +133,7 @@ int pull() {
 			printf("Unknown merge state.\n");
 		}
 				
-		git_merge_head_free(merge_heads[0]);
+		git_annotated_commit_free(merge_heads[0]);
 	}
 	
 	git_reference_free(upstream);
