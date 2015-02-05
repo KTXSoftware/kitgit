@@ -1,11 +1,17 @@
 #include <git2.h>
 #include <stdio.h>
 #include <string.h>
+#include "jsmn.h"
 
-const int pathLength = 4096;
-const int urlLength = pathLength;
+const int max_path_length = 4096;
+const int max_url_length = max_path_length;
+const int max_name_length = 256;
 
 const char* name;
+
+bool is_special(const char* name) {
+	return strcmp(name, "Kha") == 0 || strcmp(name, "Kore") == 0;
+}
 
 int transfer_progress(const git_transfer_progress* stats, void* payload) {
 	if (stats->received_objects < stats->total_objects) {
@@ -18,9 +24,17 @@ int transfer_progress(const git_transfer_progress* stats, void* payload) {
 }
 
 const char* basePath;
-char baseUrl[urlLength];
+char baseUrl[max_url_length];
 
-int lastIndexOf(const char* str, char value) {
+int index_of(const char* str, char value) {
+	size_t length = strlen(str);
+	for (size_t i = 0; i < length; ++i) {
+		if (str[i] == value) return i;
+	}
+	return -1;
+}
+
+int last_index_of(const char* str, char value) {
 	for (int i = strlen(str) - 1; i >= 0; --i) {
 		if (str[i] == value) return i;
 	}
@@ -140,38 +154,46 @@ void pull(git_repository** repo, const char* path) {
 	git_reference_free(current_branch);
 }
 
-int pull_submodule(git_submodule* sub, const char* name, void*) {
+void pull_recursive(const char* repo_name, bool specials);
+
+int pull_submodule(git_submodule* sub, const char* name, void* specials) {
 	::name = name;
-	char path[pathLength];
+	char path[max_path_length];
 
 	strcpy(path, basePath);
 	strcat(path, "/");
 	strcat(path, git_submodule_path(sub));
+
+	if (is_special(name) && *(bool*)specials) {
+		pull_recursive(name, false);
+	}
 	
 	git_repository* repo = NULL;
 	pull(&repo, path);
+	git_submodule_foreach(repo, pull_submodule, NULL);
 	git_repository_free(repo);
 
 	return 0;
 }
 
-void pull_recursive(const char* path) {
+void pull_recursive(const char* repo_name, bool specials = true) {
 	git_repository* repo = NULL;
-	pull(&repo, path);
-	git_submodule_foreach(repo, pull_submodule, NULL);
+	pull(&repo, repo_name);
+	git_submodule_foreach(repo, pull_submodule, &specials);
 	git_repository_free(repo);
 }
 
-void clone(git_repository** repo, const char* url, const char* path) {
+void clone(git_repository** repo, const char* url, const char* path, const char* branch) {
 	git_clone_options options = GIT_CLONE_OPTIONS_INIT;
 	options.remote_callbacks.transfer_progress = transfer_progress;
+	options.checkout_branch = branch;
 	git_clone(repo, url, basePath, &options);
 }
 
-int clone_submodule(git_submodule* sub, const char* name, void*) {
+int clone_submodule(git_submodule* sub, const char* name, void* branch) {
 	::name = name;
-	char path[pathLength];
-	char url[urlLength];
+	char path[max_path_length];
+	char url[max_url_length];
 
 	strcpy(url, baseUrl);
 	strcat(url, git_submodule_url(sub) + 3);
@@ -181,26 +203,225 @@ int clone_submodule(git_submodule* sub, const char* name, void*) {
 	strcat(path, git_submodule_path(sub));
 
 	git_repository* repo = NULL;
-	clone(&repo, url, path);
+	clone(&repo, url, path, (const char*)branch);
 	git_repository_free(repo);
 
 	return 0;
 }
 
-void clone_recursive(const char* url, const char* path) {
+struct Remote {
+	const char* name;
+	const char* url;
+};
+
+struct Server {
+	char name[max_name_length];
+	char base_url[max_url_length];
+	char user[max_name_length];
+	char pass[max_name_length];
+
+	Server() {
+		name[0] = 0;
+		base_url[0] = 0;
+		user[0] = 0;
+		pass[0] = 0;
+	}
+};
+
+struct Repository {
+	git_repository* repo;
+	Server* server;
+	Server** others;
+	const char* base_url;
+	const char* name;
+};
+
+void add_all_remotes(Repository* repo, Remote* remotes, int remote_count, const char* dir) {
+	for (int i = 0; i < remote_count; ++i) {
+		git_remote* remote;
+		git_remote_create(&remote, repo->repo, remotes[i].name, remotes[i].url);
+	}
+}
+
+void add_remotes(Repository* repo, const char* dir) {
+	if (repo->server != NULL) {
+		int remote_count = 1;
+		Remote remotes[10];
+		remotes[0].name = repo->server->name;
+		remotes[0].url = repo->base_url;// +repo->name;
+
+		/*for (var o in repo.others) {
+			var other = repo.others[o];
+			remotes.push({ name: other.server.name, url : other.baseurl + other.name });
+		}*/
+		add_all_remotes(repo, remotes, remote_count, dir);
+	}
+}
+
+//repo, repos, branch, baseurl, dir, subdir, projectsDir, specials
+void clone_recursive(const char* url, const char* path, const char* branch) {
 	basePath = path;
-	int index = lastIndexOf(url, '/');
-	strncpy(baseUrl, url, lastIndexOf(url, '/') + 1);
+	int index = last_index_of(url, '/');
+	strncpy(baseUrl, url, last_index_of(url, '/') + 1);
 
 	git_repository* repo = NULL;
-	clone(&repo, url, path);
-	git_submodule_foreach(repo, clone_submodule, NULL);
+	clone(&repo, url, path, branch);
+	git_submodule_foreach(repo, clone_submodule, (void*)branch);
 	git_repository_free(repo);
 }
 
+bool is_dir(const char* dir) {
+	return false;
+}
+
+void update(const char* repo_name) {
+	if (is_dir(repo_name)) {
+		pull_recursive(repo_name, !is_special(repo_name) && index_of(repo_name, '/') == -1);
+	}
+	else {
+		//clone_recursive(repo, repos, "master", NULL, projects_dir, reponame, projects_dir, !is_special(reponame) && index_of(reponame, '/') == -1);
+	}
+}
+
+enum ServerType {
+	GitHub,
+	GitBlit
+};
+
+void copy_string_token(char* to, jsmntok_t* from_token, char* from_string) {
+	int size = from_token->end - from_token->start;
+	for (int i = 0; i < size; ++i) {
+		to[i] = from_string[from_token->start + i];
+	}
+	to[size] = 0;
+}
+
+int compare_string_token(char* value, jsmntok_t* token, char* string) {
+	return strncmp(value, &string[token->start], token->end - token->start);
+}
+
+Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& index) {
+	Server* server = new Server;
+	ServerType type = GitHub;
+	char path[max_path_length];
+	char url[max_url_length];
+
+	for (; index < token_count; ++index) {
+		if (tokens[index].type == JSMN_STRING) {
+			if (compare_string_token("name", &tokens[index], json_string) == 0) {
+				++index;
+				copy_string_token(server->name, &tokens[index], json_string);
+			}
+			else if (compare_string_token("path", &tokens[index], json_string) == 0) {
+				++index;
+				copy_string_token(path, &tokens[index], json_string);
+			}
+			else if (compare_string_token("url", &tokens[index], json_string) == 0) {
+				++index;
+				copy_string_token(url, &tokens[index], json_string);
+			}
+			else if (compare_string_token("user", &tokens[index], json_string) == 0) {
+				++index;
+				copy_string_token(server->user, &tokens[index], json_string);
+			}
+			else if (compare_string_token("pass", &tokens[index], json_string) == 0) {
+				++index;
+				copy_string_token(server->pass, &tokens[index], json_string);
+			}
+			else if (compare_string_token("type", &tokens[index], json_string) == 0) {
+				++index;
+				if (compare_string_token("gitblit", &tokens[index], json_string) == 0) {
+					type = GitBlit;
+				}
+			}
+		}
+	}
+	if (type == GitHub) {
+		strcpy(server->base_url, "https://github.com/");
+		strcat(server->base_url, path);
+	}
+	else {
+		strcpy(server->base_url, "https://");
+		strcat(server->base_url, url);
+	}
+	return server;
+}
+
+void parse_options(const char* data_path, Server** servers) {
+	char options_path[max_path_length];
+	strcpy(options_path, data_path);
+	strcat(options_path, "options.json");
+
+	char json_string[1024];
+	FILE* file;
+	file = fopen(options_path, "rb");
+	size_t length = fread(json_string, 1, 1024, file);
+	fclose(file);
+
+	jsmn_parser parser;
+	jsmntok_t tokens[100];
+	jsmn_init(&parser);
+	int token_count = jsmn_parse(&parser, json_string, length, tokens, 100);
+	for (int i = 0; i < token_count; ++i) {
+		if (tokens[i].type == JSMN_STRING && strncmp("servers", &json_string[tokens[i].start], tokens[i].end - tokens[i].start) == 0) {
+			++i;
+			int array_size = tokens[i].size;
+			++i;
+			int server_index = 0;
+			for (int i2 = 0; i2 < array_size; ++i2) {
+				int size = tokens[i].size;
+				++i;
+				servers[server_index] = parseServer(tokens, i + size * 2, json_string, i);
+				++server_index;
+			}
+			servers[server_index] = NULL;
+		}
+	}
+}
+
+void parse_server(const char* data_path, const char* server_name) {
+	char server_path[max_path_length];
+	strcpy(server_path, data_path);
+	strcat(server_path, server_name);
+	strcat(server_path, ".json");
+
+	char json_string[4096];
+	FILE* file;
+	file = fopen(server_path, "rb");
+	size_t length = fread(json_string, 1, 4096, file);
+	fclose(file);
+
+	jsmn_parser parser;
+	jsmntok_t tokens[256];
+	jsmn_init(&parser);
+	int token_count = jsmn_parse(&parser, json_string, length, tokens, 256);
+	for (int i = 0; i < token_count; ++i) {
+		if (tokens[i].type == JSMN_STRING && strncmp("repositories", &json_string[tokens[i].start], tokens[i].end - tokens[i].start) == 0) {
+			++i;
+			int array_size = tokens[i].size;
+			++i;
+			int repo_index = 0;
+			for (int i2 = 0; i2 < array_size; ++i2) {
+				char name[max_name_length];
+				for (int i3 = tokens[i].start; i3 != tokens[i].end; ++i3) {
+					name[i3 - tokens[i].start] = json_string[i3];
+				}
+				name[tokens[i].end - tokens[i].start] = 0;
+				++i;
+			}
+		}
+	}
+}
+
 int main(int argc, char** argv) {
+	const char* data_path = "C:\\Users\\Robert\\AppData\\Local\\Kit\\";
+	
+	Server* servers[10];
+
 	const char* path = "kraffiti";
 	const char* url = "https://github.com/ktxsoftware/kraffiti.git";
-	clone_recursive(url, path);
-	pull_recursive(path);
+	//clone_recursive(url, path, "master");
+	//pull_recursive(path);
+	parse_options(data_path, servers);
+	parse_server(data_path, "ktx-github");
 }
