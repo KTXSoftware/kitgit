@@ -118,8 +118,8 @@ void update(const char* repo_name) {
 }
 
 int main(int argc, char** argv) {
-	projects_dir = "C:\\Users\\Robert\\Projekte\\KitTest\\";
-	const char* data_path = "C:\\Users\\Robert\\AppData\\Local\\Kit\\";
+	const char* data_path = argv[1]; //"C:\\Users\\Robert\\AppData\\Local\\Kit\\"; 
+	projects_dir = argv[2]; //"C:\\Users\\Robert\\Projekte\\KitTest\\";
 	
 	for (int i = 0; i < max_servers + 1; ++i) {
 		servers[i] = 0;
@@ -129,7 +129,8 @@ int main(int argc, char** argv) {
 		parse_server(data_path, servers[i]);
 	}
 
-	update("kraffiti");
+	update(argv[3]);
+	//update("kraffiti");
 }
 
 #ifdef SYS_WINDOWS
