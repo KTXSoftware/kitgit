@@ -130,5 +130,5 @@ void clone(git_repository** repo, const char* url, const char* path, const char*
 	git_clone_options options = GIT_CLONE_OPTIONS_INIT;
 	options.remote_callbacks.transfer_progress = transfer_progress;
 	options.checkout_branch = branch;
-	git_clone(repo, url, basePath, &options);
+	git_clone(repo, url, path, &options);
 }

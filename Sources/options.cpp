@@ -54,7 +54,8 @@ Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& 
 	}
 	if (type == GitHub) {
 		strcpy(server->base_url, "https://github.com/");
-		strcat(server->base_url, path);
+		int index = last_index_of(path, '/');
+		strcat(server->base_url, &path[index + 1]);
 	}
 	else {
 		strcpy(server->base_url, "https://");
@@ -95,10 +96,10 @@ void parse_options(const char* data_path, Server** servers) {
 	}
 }
 
-void parse_server(const char* data_path, const char* server_name) {
+void parse_server(const char* data_path, Server* server) {
 	char server_path[max_path_length];
 	strcpy(server_path, data_path);
-	strcat(server_path, server_name);
+	strcat(server_path, server->name);
 	strcat(server_path, ".json");
 
 	char json_string[4096];
@@ -116,15 +117,22 @@ void parse_server(const char* data_path, const char* server_name) {
 			++i;
 			int array_size = tokens[i].size;
 			++i;
-			int repo_index = 0;
 			for (int i2 = 0; i2 < array_size; ++i2) {
-				char name[max_name_length];
+				char* name = new char[max_name_length];
 				for (int i3 = tokens[i].start; i3 != tokens[i].end; ++i3) {
 					name[i3 - tokens[i].start] = json_string[i3];
 				}
 				name[tokens[i].end - tokens[i].start] = 0;
+				server->repos[i2] = name;
 				++i;
 			}
 		}
 	}
+}
+
+bool Server::has(const char* repo) {
+	for (int i = 0; repos[i] != 0; ++i) {
+		if (strcmp(repo, repos[i]) == 0) return true;
+	}
+	return false;
 }
