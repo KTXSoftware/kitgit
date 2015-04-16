@@ -6,11 +6,6 @@
 #include "options.h"
 
 const char* name;
-
-bool is_special(const char* name) {
-	return strcmp(name, "Kha") == 0 || strcmp(name, "Kore") == 0;
-}
-
 const char* basePath;
 char baseUrl[max_url_length];
 
@@ -31,7 +26,7 @@ int last_index_of(const char* str, char value) {
 
 void pull_recursive(const char* repo_name, bool specials);
 
-int pull_submodule(git_submodule* sub, const char* name, void* specials) {
+int pull_submodule(git_submodule* sub, const char* name, void*) {
 	::name = name;
 	char path[max_path_length];
 
@@ -39,10 +34,6 @@ int pull_submodule(git_submodule* sub, const char* name, void* specials) {
 	strcat(path, "/");
 	strcat(path, git_submodule_path(sub));
 
-	if (is_special(name) && *(bool*)specials) {
-		pull_recursive(name, false);
-	}
-	
 	git_repository* repo = NULL;
 	pull(&repo, path);
 	git_submodule_foreach(repo, pull_submodule, NULL);
@@ -51,10 +42,10 @@ int pull_submodule(git_submodule* sub, const char* name, void* specials) {
 	return 0;
 }
 
-void pull_recursive(const char* repo_name, bool specials = true) {
+void pull_recursive(const char* repo_name) {
 	git_repository* repo = NULL;
 	pull(&repo, repo_name);
-	git_submodule_foreach(repo, pull_submodule, &specials);
+	git_submodule_foreach(repo, pull_submodule, NULL);
 	git_repository_free(repo);
 }
 
@@ -130,7 +121,7 @@ bool is_dir(const char* dir) {
 
 void update(const char* repo_name) {
 	if (is_dir(repo_name)) {
-		pull_recursive(repo_name, !is_special(repo_name) && index_of(repo_name, '/') == -1);
+		pull_recursive(repo_name);
 	}
 	else {
 		//clone_recursive(repo, repos, "master", NULL, projects_dir, reponame, projects_dir, !is_special(reponame) && index_of(reponame, '/') == -1);
