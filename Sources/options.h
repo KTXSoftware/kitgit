@@ -27,5 +27,8 @@ struct Server {
 	bool has(const char* repo);
 };
 
+const int max_servers = 32;
+extern Server* servers[max_servers + 1];
+
 void parse_options(const char* data_path, Server** servers);
 void parse_server(const char* data_path, Server* server);

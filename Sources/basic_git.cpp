@@ -1,5 +1,6 @@
 #include "constants.h"
 #include "basic_git.h"
+#include "options.h"
 #include <git2.h>
 #include <stdio.h>
 
@@ -25,6 +26,37 @@ void check_lg2(int error, const char *message, const char *extra) {
 	exit(1);
 }
 
+int transfer_progress(const git_transfer_progress* stats, void* payload) {
+	if (stats->received_objects < stats->total_objects) {
+		printf("%s: Received %i of %i objects (%i Bytes).\n", name, stats->received_objects, stats->total_objects, stats->received_bytes);
+	}
+	else {
+		printf("%s: Processing %i of %i deltas.\n", name, stats->indexed_deltas, stats->total_deltas);
+	}
+	return 0;
+}
+
+bool starts_with(const char* string, const char* substring) {
+	for (int i = 0; substring[i] != 0; ++i) {
+		if (string[i] == 0) return false;
+		if (string[i] != substring[i]) return false;
+	}
+	return true;
+}
+
+int get_credentials(git_cred** cred, const char *url, const char *username_from_url, unsigned int allowed_types, void* payload) {
+	Server* server = 0;
+	for (int i = 0; servers[i] != 0; ++i) {
+		if (starts_with(url, servers[i]->base_url)) {
+			server = servers[i];
+			break;
+		}
+	}
+	if (server == 0) return 1;
+	git_cred_userpass_plaintext_new(cred, server->name, server->pass);
+	return 0;
+}
+
 void pull(git_repository** repo, const char* path) {
 	git_reference* current_branch;
 	git_reference* upstream;
@@ -37,6 +69,12 @@ void pull(git_repository** repo, const char* path) {
 	check_lg2(git_branch_remote_name(&remote_name, *repo, git_reference_name(upstream)), "failed to get the reference's upstream", NULL);
 	check_lg2(git_remote_lookup(&remote, *repo, remote_name.ptr), "failed to load remote", NULL);
 	git_buf_free(&remote_name);
+
+	git_remote_callbacks callbacks = GIT_REMOTE_CALLBACKS_INIT;
+	callbacks.credentials = get_credentials;
+	callbacks.transfer_progress = transfer_progress;
+	git_remote_set_callbacks(remote, &callbacks);
+
 	check_lg2(git_remote_fetch(remote, NULL, NULL, NULL), "failed to fetch from upstream", NULL);
 
 	{
@@ -116,19 +154,10 @@ void pull(git_repository** repo, const char* path) {
 	git_reference_free(current_branch);
 }
 
-int transfer_progress(const git_transfer_progress* stats, void* payload) {
-	if (stats->received_objects < stats->total_objects) {
-		printf("%s: Received %i of %i objects (%i Bytes).\n", name, stats->received_objects, stats->total_objects, stats->received_bytes);
-	}
-	else {
-		printf("%s: Processing %i of %i deltas.\n", name, stats->indexed_deltas, stats->total_deltas);
-	}
-	return 0;
-}
-
 void clone(git_repository** repo, const char* url, const char* path, const char* branch) {
 	git_clone_options options = GIT_CLONE_OPTIONS_INIT;
 	options.remote_callbacks.transfer_progress = transfer_progress;
+	options.remote_callbacks.credentials = get_credentials;
 	options.checkout_branch = branch;
 	git_clone(repo, url, path, &options);
 }

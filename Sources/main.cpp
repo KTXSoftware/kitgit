@@ -7,7 +7,6 @@
 
 const char* name;
 char baseUrl[max_url_length];
-const int max_servers = 32;
 Server* servers[max_servers + 1];
 const char* projects_dir;
 #ifdef SYS_WINDOWS
