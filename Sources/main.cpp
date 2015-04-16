@@ -30,13 +30,43 @@ int last_index_of(const char* str, char value) {
 	return -1;
 }
 
+bool starts_with(const char* string, const char* substring) {
+	for (int i = 0; substring[i] != 0; ++i) {
+		if (string[i] == 0) return false;
+		if (string[i] != substring[i]) return false;
+	}
+	return true;
+}
+
+bool ends_with(const char* string, const char* substring) {
+	int length = strlen(string);
+	int sublength = strlen(substring);
+	for (int i = length - sublength; string[i] != 0; ++i) {
+		if (string[i] != substring[i - length + sublength]) return false;
+	}
+	return true;
+}
+
+void extract_name(const char* url, char* name) {
+	int start = last_index_of(url, '/') + 1;
+	int end = strlen(url);
+	if (ends_with(url, ".git")) end -= 4;
+	for (int i = start; i != end; ++i) {
+		name[i - start] = url[i];
+	}
+	name[end - start] = 0;
+}
+
 void pull_recursive(const char* repo_name, const char* path);
 
-int pull_submodule(git_submodule* sub, const char* name, void*) {
+int pull_submodule(git_submodule* sub, const char* name_, void*) {
 	git_repository* parent = git_submodule_owner(sub);
 	char path[max_path_length];
 	strcpy(path, git_repository_workdir(parent));
 	strcat(path, git_submodule_path(sub));
+
+	char name[max_name_length];
+	extract_name(git_submodule_url(sub), name);
 
 	pull_recursive(name, path);
 
@@ -74,11 +104,14 @@ Server* find_server(const char* repo_name) {
 
 void clone_recursive(const char* repo_name, const char* path, const char* branch);
 
-int clone_submodule(git_submodule* sub, const char* name, void*) {
+int clone_submodule(git_submodule* sub, const char* name_, void*) {
 	git_repository* parent = git_submodule_owner(sub);
 	char path[max_path_length];
 	strcpy(path, git_repository_workdir(parent));
 	strcat(path, git_submodule_path(sub));
+
+	char name[max_name_length];
+	extract_name(git_submodule_url(sub), name);
 	
 	clone_recursive(name, path, git_submodule_branch(sub));
 

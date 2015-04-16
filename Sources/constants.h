@@ -8,3 +8,5 @@ const int max_name_length = 256;
 
 int index_of(const char* str, char value);
 int last_index_of(const char* str, char value);
+bool starts_with(const char* string, const char* substring);
+bool ends_with(const char* string, const char* substring);

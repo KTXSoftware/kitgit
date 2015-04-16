@@ -16,32 +16,20 @@ void check_lg2(int error, const char *message, const char *extra) {
 		lg2spacer = " - ";
 	}
 
-	if (extra)
-		fprintf(stderr, "%s '%s' [%d]%s%s\n",
-		message, extra, error, lg2spacer, lg2msg);
-	else
-		fprintf(stderr, "%s [%d]%s%s\n",
-		message, error, lg2spacer, lg2msg);
+	if (extra) fprintf(stderr, "%s '%s' [%d]%s%s\n", message, extra, error, lg2spacer, lg2msg);
+	else fprintf(stderr, "%s [%d]%s%s\n", message, error, lg2spacer, lg2msg);
 
 	exit(1);
 }
 
 int transfer_progress(const git_transfer_progress* stats, void* payload) {
 	if (stats->received_objects < stats->total_objects) {
-		printf("%s: Received %i of %i objects (%i Bytes).\n", name, stats->received_objects, stats->total_objects, stats->received_bytes);
+		printf("#%s: Received %i of %i objects (%i Bytes).\n", name, stats->received_objects, stats->total_objects, stats->received_bytes);
 	}
 	else {
-		printf("%s: Processing %i of %i deltas.\n", name, stats->indexed_deltas, stats->total_deltas);
+		printf("#%s: Processing %i of %i deltas.\n", name, stats->indexed_deltas, stats->total_deltas);
 	}
 	return 0;
-}
-
-bool starts_with(const char* string, const char* substring) {
-	for (int i = 0; substring[i] != 0; ++i) {
-		if (string[i] == 0) return false;
-		if (string[i] != substring[i]) return false;
-	}
-	return true;
 }
 
 int get_credentials(git_cred** cred, const char *url, const char *username_from_url, unsigned int allowed_types, void* payload) {
