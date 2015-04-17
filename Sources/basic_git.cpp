@@ -32,7 +32,7 @@ int transfer_progress(const git_transfer_progress* stats, void* payload) {
 	return 0;
 }
 
-int get_credentials(git_cred** cred, const char *url, const char *username_from_url, unsigned int allowed_types, void* payload) {
+int get_credentials(git_cred** cred, const char* url, const char* username_from_url, unsigned int allowed_types, void* payload) {
 	Server* server = 0;
 	for (int i = 0; servers[i] != 0; ++i) {
 		if (starts_with(url, servers[i]->base_url)) {
@@ -41,8 +41,12 @@ int get_credentials(git_cred** cred, const char *url, const char *username_from_
 		}
 	}
 	if (server == 0) return 1;
-	git_cred_userpass_plaintext_new(cred, server->name, server->pass);
+	git_cred_userpass_plaintext_new(cred, server->user, server->pass);
 	return 0;
+}
+
+int check_certificate(git_cert* cert, int valid, const char* host, void* payload) {
+	return 1;
 }
 
 void pull(git_repository** repo, const char* path) {
@@ -61,6 +65,7 @@ void pull(git_repository** repo, const char* path) {
 	git_remote_callbacks callbacks = GIT_REMOTE_CALLBACKS_INIT;
 	callbacks.credentials = get_credentials;
 	callbacks.transfer_progress = transfer_progress;
+	callbacks.certificate_check = check_certificate;
 	git_remote_set_callbacks(remote, &callbacks);
 
 	check_lg2(git_remote_fetch(remote, NULL, NULL, NULL), "failed to fetch from upstream", NULL);
@@ -146,6 +151,7 @@ void clone(git_repository** repo, const char* url, const char* path, const char*
 	git_clone_options options = GIT_CLONE_OPTIONS_INIT;
 	options.remote_callbacks.transfer_progress = transfer_progress;
 	options.remote_callbacks.credentials = get_credentials;
+	options.remote_callbacks.certificate_check = check_certificate;
 	options.checkout_branch = branch;
 	git_clone(repo, url, path, &options);
 }

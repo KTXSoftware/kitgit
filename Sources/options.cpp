@@ -60,6 +60,7 @@ Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& 
 	else {
 		strcpy(server->base_url, "https://");
 		strcat(server->base_url, url);
+		strcat(server->base_url, "/r");
 	}
 	return server;
 }
