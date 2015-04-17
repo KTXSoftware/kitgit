@@ -167,16 +167,22 @@ int main(int argc, char** argv) {
 }
 
 #ifdef SYS_WINDOWS
+
 #include <Windows.h>
-#endif
 
 bool is_dir(const char* dir) {
-#ifdef SYS_WINDOWS
 	DWORD attribs = GetFileAttributesA(dir);
 	if (attribs == INVALID_FILE_ATTRIBUTES) return false;
 	return (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
+}
+
 #else
+
+#include <sys/stat.h>
+
+bool is_dir(const char* dir) {
 	struct stat st;
 	return stat(dir, &st) == 0 && (st.st_mode & S_IFDIR) != 0;
-#endif
 }
+
+#endif
