@@ -35,8 +35,14 @@ if (platform === Platform.Windows) {
 	addLibFiles('deps/regex/regex.c');
 }
 else {
-	addLibFiles('src/hash/hash_generic.c');
+	project.addDefine('GIT_COMMON_CRYPTO');
+	project.addDefine('GIT_SSL');
+	//addLibFiles('src/hash/hash_generic.c');
 	addLibFiles('src/unix/*.c', 'src/unix/*.h');
+}
+
+if (platform === Platform.OSX) {
+	project.addLibs('libcrypto.dylib', 'libssl.dylib');
 }
 
 project.addIncludeDir('libgit2/deps/zlib');

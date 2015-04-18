@@ -162,8 +162,10 @@ int main(int argc, char** argv) {
 		parse_server(data_path, servers[i]);
 	}
 
+	git_libgit2_init();
 	update(argv[3]);
 	//update("kraffiti");
+	git_libgit2_shutdown();
 }
 
 #ifdef SYS_WINDOWS

@@ -103,16 +103,18 @@ void parse_server(const char* data_path, Server* server) {
 	strcat(server_path, server->name);
 	strcat(server_path, ".json");
 
-	char json_string[4096];
+	char* json_string = new char[4096 * 100];
 	FILE* file;
 	file = fopen(server_path, "rb");
-	size_t length = fread(json_string, 1, 4096, file);
+	size_t length = fread(json_string, 1, 4096 * 100, file);
 	fclose(file);
 
 	jsmn_parser parser;
-	jsmntok_t tokens[256];
 	jsmn_init(&parser);
-	int token_count = jsmn_parse(&parser, json_string, length, tokens, 256);
+	int token_count = jsmn_parse(&parser, json_string, length, nullptr, 0);
+	jsmntok_t* tokens = new jsmntok_t[token_count];
+	jsmn_init(&parser);
+	token_count = jsmn_parse(&parser, json_string, length, tokens, token_count);
 	for (int i = 0; i < token_count; ++i) {
 		if (tokens[i].type == JSMN_STRING && strncmp("repositories", &json_string[tokens[i].start], tokens[i].end - tokens[i].start) == 0) {
 			++i;
@@ -129,6 +131,8 @@ void parse_server(const char* data_path, Server* server) {
 			}
 		}
 	}
+	delete[] tokens;
+	delete[] json_string;
 }
 
 bool Server::has(const char* repo) {
