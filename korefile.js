@@ -35,7 +35,13 @@ if (platform === Platform.Windows) {
 	addLibFiles('deps/regex/regex.c');
 }
 else {
-	project.addDefine('GIT_COMMON_CRYPTO');
+	if (platform === Platform.OSX) {
+		project.addDefine('GIT_COMMON_CRYPTO');
+	}
+	else {
+		project.addDefine('OPENSSL_SHA1');
+		//project.addLibs('ssl', 'crypto');
+	}
 	project.addDefine('GIT_SSL');
 	//addLibFiles('src/hash/hash_generic.c');
 	addLibFiles('src/unix/*.c', 'src/unix/*.h');

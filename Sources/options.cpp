@@ -111,7 +111,7 @@ void parse_server(const char* data_path, Server* server) {
 
 	jsmn_parser parser;
 	jsmn_init(&parser);
-	int token_count = jsmn_parse(&parser, json_string, length, nullptr, 0);
+	int token_count = jsmn_parse(&parser, json_string, length, 0, 0);
 	jsmntok_t* tokens = new jsmntok_t[token_count];
 	jsmn_init(&parser);
 	token_count = jsmn_parse(&parser, json_string, length, tokens, token_count);
