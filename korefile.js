@@ -27,12 +27,15 @@ if (platform === Platform.Windows) {
 	project.addDefines('WIN32', '_WIN32_WINNT=0x0501');
 
 	project.addDefine('GIT_WINHTTP');
+	project.addDefine('GIT_THREADS');
 
 	project.addDefine('WIN32_SHA1');
 	addLibFiles('src/hash/hash_win32.c');
 
 	project.addIncludeDir('libgit2/deps/regex');
 	addLibFiles('deps/regex/regex.c');
+
+	project.addLibs('Crypt32', 'Winhttp', 'Rpcrt4');
 }
 else {
 	if (platform === Platform.OSX) {

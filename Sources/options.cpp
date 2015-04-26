@@ -21,6 +21,7 @@ Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& 
 	ServerType type = GitHub;
 	char path[max_path_length];
 	char url[max_url_length];
+	char name_space[max_path_length];
 
 	for (; index < token_count; ++index) {
 		if (tokens[index].type == JSMN_STRING) {
@@ -36,6 +37,10 @@ Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& 
 				++index;
 				copy_string_token(url, &tokens[index], json_string);
 			}
+			else if (compare_string_token("namespace", &tokens[index], json_string) == 0) {
+				++index;
+				copy_string_token(name_space, &tokens[index], json_string);
+			}
 			else if (compare_string_token("user", &tokens[index], json_string) == 0) {
 				++index;
 				copy_string_token(server->user, &tokens[index], json_string);
@@ -49,6 +54,9 @@ Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& 
 				if (compare_string_token("gitblit", &tokens[index], json_string) == 0) {
 					type = GitBlit;
 				}
+				else if (compare_string_token("gitlab", &tokens[index], json_string) == 0) {
+					type = GitLab;
+				}
 			}
 		}
 	}
@@ -57,10 +65,16 @@ Server* parseServer(jsmntok_t* tokens, int token_count, char* json_string, int& 
 		int index = last_index_of(path, '/');
 		strcat(server->base_url, &path[index + 1]);
 	}
-	else {
+	else if (type == GitBlit) {
 		strcpy(server->base_url, "https://");
 		strcat(server->base_url, url);
 		strcat(server->base_url, "/r");
+	}
+	else {
+		strcpy(server->base_url, "https://");
+		strcat(server->base_url, url);
+		strcat(server->base_url, "/");
+		strcat(server->base_url, name_space);
 	}
 	return server;
 }

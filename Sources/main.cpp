@@ -89,6 +89,7 @@ void add_remotes(git_repository* repo, const char* repo_name) {
 			strcpy(url, servers[i]->base_url);
 			strcat(url, "/");
 			strcat(url, repo_name);
+			strcat(url, ".git");
 			git_remote* remote;
 			git_remote_create(&remote, repo, servers[i]->name, url);
 		}
@@ -127,6 +128,7 @@ void clone_recursive(const char* repo_name, const char* path, const char* branch
 	strcpy(url, server->base_url);
 	strcat(url, "/");
 	strcat(url, repo_name);
+	strcat(url, ".git");
 
 	git_repository* repo = NULL;
 	clone(&repo, url, path, branch);

@@ -2,7 +2,8 @@
 
 enum ServerType {
 	GitHub,
-	GitBlit
+	GitBlit,
+	GitLab
 };
 
 const int max_repos = 1024;

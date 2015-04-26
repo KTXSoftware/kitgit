@@ -68,7 +68,7 @@ void pull(git_repository** repo, const char* path) {
 	callbacks.certificate_check = check_certificate;
 	git_remote_set_callbacks(remote, &callbacks);
 
-	check_lg2(git_remote_fetch(remote, NULL, NULL, NULL), "failed to fetch from upstream", NULL);
+	check_lg2(git_remote_fetch(remote, NULL, NULL), "failed to fetch from upstream", NULL);
 
 	{
 		git_annotated_commit *merge_heads[1];
@@ -92,11 +92,11 @@ void pull(git_repository** repo, const char* path) {
 			check_lg2(git_object_lookup(&obj, *repo, id, GIT_OBJ_ANY), "Failed getting new head id.", NULL);
 
 			git_checkout_options options = GIT_CHECKOUT_OPTIONS_INIT;
-			options.checkout_strategy = GIT_CHECKOUT_SAFE_CREATE;
+			options.checkout_strategy = GIT_CHECKOUT_SAFE;
 			check_lg2(git_checkout_tree(*repo, obj, &options), "Checkout failed.", NULL);
 
 			git_reference* newhead;
-			check_lg2(git_reference_set_target(&newhead, current_branch, id, NULL, "Fast forwarding"), "Fast forward fail.", NULL);
+			check_lg2(git_reference_set_target(&newhead, current_branch, id, "Fast forwarding"), "Fast forward fail.", NULL);
 		}
 		else if (analysis & GIT_MERGE_ANALYSIS_NORMAL) {
 			check_lg2(git_merge(*repo, (const git_annotated_commit**)merge_heads, 1, NULL, NULL), "failed to merge", NULL);
