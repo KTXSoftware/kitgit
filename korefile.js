@@ -40,18 +40,18 @@ if (platform === Platform.Windows) {
 else {
 	if (platform === Platform.OSX) {
 		project.addDefine('GIT_COMMON_CRYPTO');
+		project.addDefine('GIT_SECURE_TRANSPORT');
+		//project.addLibs('libcrypto.dylib', 'libssl.dylib');
+		project.addLibs('CoreFoundation', 'Security');
 	}
 	else {
+		project.addDefine('GIT_OPENSSL');
 		project.addDefine('OPENSSL_SHA1');
 		//project.addLibs('ssl', 'crypto');
 	}
-	project.addDefine('GIT_SSL');
+	
 	//addLibFiles('src/hash/hash_generic.c');
 	addLibFiles('src/unix/*.c', 'src/unix/*.h');
-}
-
-if (platform === Platform.OSX) {
-	project.addLibs('libcrypto.dylib', 'libssl.dylib');
 }
 
 project.addIncludeDir('libgit2/deps/zlib');
