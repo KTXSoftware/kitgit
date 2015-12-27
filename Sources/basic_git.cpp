@@ -66,9 +66,9 @@ void pull(git_repository** repo, const char* path) {
 	callbacks.credentials = get_credentials;
 	callbacks.transfer_progress = transfer_progress;
 	callbacks.certificate_check = check_certificate;
-	git_remote_set_callbacks(remote, &callbacks);
-
-	check_lg2(git_remote_fetch(remote, NULL, NULL), "failed to fetch from upstream", NULL);
+	git_remote_connect(remote, GIT_DIRECTION_FETCH, &callbacks, NULL);
+	
+	check_lg2(git_remote_fetch(remote, NULL, NULL, NULL), "failed to fetch from upstream", NULL);
 
 	{
 		git_annotated_commit *merge_heads[1];
@@ -149,9 +149,9 @@ void pull(git_repository** repo, const char* path) {
 
 void clone(git_repository** repo, const char* url, const char* path, const char* branch) {
 	git_clone_options options = GIT_CLONE_OPTIONS_INIT;
-	options.remote_callbacks.transfer_progress = transfer_progress;
-	options.remote_callbacks.credentials = get_credentials;
-	options.remote_callbacks.certificate_check = check_certificate;
+	options.fetch_opts.callbacks.transfer_progress = transfer_progress;
+	options.fetch_opts.callbacks.credentials = get_credentials;
+	options.fetch_opts.callbacks.certificate_check = check_certificate;
 	options.checkout_branch = branch;
 	git_clone(repo, url, path, &options);
 }
